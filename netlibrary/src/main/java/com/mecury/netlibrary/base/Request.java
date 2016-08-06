@@ -1,5 +1,9 @@
 package com.mecury.netlibrary.base;
 
+import android.util.Log;
+
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,7 +19,9 @@ public abstract class Request<T> implements Comparable<Request<T>> {
         PUT("PUT"),
         DELETE("DELETE");
 
-        /**Http request type*/
+        /**
+         * Http request type
+         */
         private String mHttpMethod = "";
 
         HttpMethod(String method) {
@@ -29,7 +35,7 @@ public abstract class Request<T> implements Comparable<Request<T>> {
     }
 
     //优先级枚举
-    public static enum Priority{
+    public static enum Priority {
         LOW,
         NORMAL,
         HIGH,
@@ -92,46 +98,219 @@ public abstract class Request<T> implements Comparable<Request<T>> {
     private Map<String, String> mBodyParams = new HashMap<String, String>();
 
     /**
-     *
      * @param method
      * @param url
      * @param listener
      */
-    public Request(HttpMethod method, String url, RequestListener<T> listener){
+    public Request(HttpMethod method, String url, RequestListener<T> listener) {
         mHttpMethod = method;
         mUrl = url;
         mRequestListener = listener;
     }
 
-    public void addHeader(String name, String value){
+    public void addHeader(String name, String value) {
         mHeaders.put(name, value);
     }
 
     /**
      * 从原生的网络请求中解析结果
      */
-    public abstract T pareseResponse(Response response);
+    public abstract T parseResponse(Response response);
 
     /**
      * 处理Response, 该方法运行在UI线程
+     *
      * @param response
      */
-    public final void deliveryResponse(Response response){
+    public final void deliveryResponse(Response response) {
+        T result = parseResponse(response);
+        if (mRequestListener != null) {
+            int stCode = response != null ? response.getStatusCode() : -1;
+            String msg = response != null ? response.getMessage() : "unKnow error";
+            Log.e("", "### 执行回调 ： stCode = " + stCode + ", resulte = " + result + ",err : " + msg);
+            mRequestListener.onComplete(stCode, result, msg);
+        }
+    }
 
+    public String getUrl() {
+        return mUrl;
+    }
+
+    public RequestListener<T> getRequestListener() {
+        return mRequestListener;
+    }
+
+    public int getSerialNumber() {
+        return mSericalNum;
+    }
+
+    public void setSerialNumber(int mSericalNum) {
+        this.mSericalNum = mSericalNum;
+    }
+
+    public Priority getPriority() {
+        return mPriority;
+    }
+
+    public void setPriority(Priority priority) {
+        this.mPriority = priority;
+    }
+
+    protected String getParamsEncoding() {
+        return DEFAULT_PARAMS_ENCODING;
+    }
+
+    public String getBodyContentType() {
+        return "application/x-www-form-urlencoded; charset=" + getParamsEncoding();
+    }
+
+    public HttpMethod getHttpMethod() {
+        return mHttpMethod;
+    }
+
+    public Map<String, String> getHeaders() {
+        return mHeaders;
+    }
+
+    public Map<String, String> getParams() {
+        return mBodyParams;
+    }
+
+    public boolean isHttps() {
+        return mUrl.startsWith("https");
+    }
+
+    /**
+     * 该请求是否应该缓存
+     */
+    public void setShouldCache(boolean shouldCache) {
+        this.mShouldCache = shouldCache;
+    }
+
+    public boolean shouldCache() {
+        return mShouldCache;
+    }
+
+    public boolean isCanceled() {
+        return isCancel;
+    }
+
+    /**
+     * Return the raw POST or PUT  body to be sent.
+     */
+    public byte[] getBody() {
+        Map<String, String> params = getParams();
+        if (params != null && params.size() > 0) {
+            return encodeParameters(params, getParamsEncoding());
+        }
+        return null;
     }
 
 
+    /**
+     * Converts <code>params</code> into an application/x-www-form-urlencoded
+     * encoded string.
+     * 将参数转换为URL字符串，格式为：key1 = value1&key2 = value2
+     */
+    private byte[] encodeParameters(Map<String, String> params, String paramsEncoding) {
+        StringBuilder encodedParams = new StringBuilder();
 
-
-
+        try {
+            for (Map.Entry<String, String> entry : params.entrySet()) {
+                encodedParams.append(URLEncoder.encode(entry.getKey(), paramsEncoding));
+                encodedParams.append('=');
+                encodedParams.append(URLEncoder.encode(entry.getValue(), paramsEncoding));
+                encodedParams.append('&');
+            }
+            return encodedParams.toString().getBytes(paramsEncoding);
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException("Encoding not supported:" + paramsEncoding, e);
+        }
+    }
 
 
     /**
+     * 用于对请求的排序处理，根据优先级和加入到队列的序号进行排序
+     */
+    @Override
+    public int compareTo(Request<T> another) {
+        Priority myPriority = this.getPriority();
+        Priority anotherPriority = another.getPriority();
+
+        //如果优先级相等，那么按照添加到队列的序列号来执行
+        return myPriority.equals(anotherPriority)
+                ? this.getSerialNumber() - another.getSerialNumber()
+                : myPriority.ordinal() - anotherPriority.ordinal();
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((mHeaders == null) ? 0 : mHeaders.hashCode());
+        result = prime * result + ((mHttpMethod == null) ? 0 : mHttpMethod.hashCode());
+        result = prime * result + ((mBodyParams == null) ? 0 : mBodyParams.hashCode());
+        result = prime * result + ((mPriority == null) ? 0 : mPriority.hashCode());
+        result = prime * result + (mShouldCache ? 1231 : 1237);
+        result = prime * result + ((mUrl == null) ? 0 : mUrl.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        Request<?> other = (Request<?>) obj;
+        if (mHeaders == null) {
+            if (other.mHeaders != null) {
+                return false;
+            }
+        } else if (!mHeaders.equals(other.mHeaders)){
+            return false;
+        }
+        if (mHttpMethod != other.mHttpMethod){
+            return false;
+        }
+        if (mBodyParams == null){
+            if (other.mBodyParams != null){
+                return false;
+            }
+        }else if (!mBodyParams.equals(other.mBodyParams)){
+            return false;
+        }
+        if (mPriority != other.mPriority){
+            return false;
+        }
+        if (mShouldCache != other.shouldCache()){
+            return false;
+        }
+        if (mUrl == null){
+            if (other.mUrl != null){
+                return false;
+            }
+        }else if (!mUrl.equals(other.mUrl)){
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * 网络请求Listener
+     *
      * @param <T> 请求的response类型
      */
     public static interface RequestListener<T> {
-        
+        /**
+         * 请求完成时的回调
+         */
+        public void onComplete(int stCode, T response, String errMsg);
     }
 }
 

@@ -31,7 +31,7 @@ public class Response extends BasicHttpResponse {
         rewData = entityToByte(entity);
     }
 
-    public byte[] getRewData(){
+    public byte[] getRawData(){
         return rewData;
     }
 
