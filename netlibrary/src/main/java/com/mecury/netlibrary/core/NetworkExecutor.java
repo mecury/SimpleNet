@@ -1,10 +1,11 @@
 package com.mecury.netlibrary.core;
 
 import android.util.Log;
-import android.util.LruCache;
 
 import com.mecury.netlibrary.base.Request;
 import com.mecury.netlibrary.base.Response;
+import com.mecury.netlibrary.cache.Cache;
+import com.mecury.netlibrary.cache.LruMemCache;
 import com.mecury.netlibrary.httpstacks.HttpStack;
 
 import java.util.concurrent.BlockingQueue;
@@ -33,7 +34,7 @@ public class NetworkExecutor extends Thread{
     /**
      * 请求缓存
      */
-    private static Cache<String, Response> mReqCache = new LruCache();
+    private static Cache<String, Response> mReqCache = new LruMemCache();
 
     /**
      * 是否停止
