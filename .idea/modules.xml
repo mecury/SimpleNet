@@ -5,6 +5,8 @@
       <module fileurl="file://$PROJECT_DIR$/SimpleNet.iml" filepath="$PROJECT_DIR$/SimpleNet.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
       <module fileurl="file://$PROJECT_DIR$/netlibrary/netlibrary.iml" filepath="$PROJECT_DIR$/netlibrary/netlibrary.iml" />
+      <module fileurl="file://$PROJECT_DIR$/okhttp3/okhttp3.iml" filepath="$PROJECT_DIR$/okhttp3/okhttp3.iml" />
+      <module fileurl="file://$PROJECT_DIR$/originokhttp/originokhttp.iml" filepath="$PROJECT_DIR$/originokhttp/originokhttp.iml" />
     </modules>
   </component>
 </project>
